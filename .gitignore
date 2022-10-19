@@ -1,1 +1,2 @@
-./Lib/site-packages/xgboost/
+venv\Lib\site-packages\xgboost\lib\xgboost.dll
+*.dll
