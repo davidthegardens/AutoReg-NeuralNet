@@ -4,13 +4,39 @@ import seaborn as sn
 import matplotlib.pyplot as plt
 from autoviz.AutoViz_Class import AutoViz_Class
 import os
-from numpy import exp, array, random, dot
+import numpy as np
 
 #set and sort dataframe
 df=pd.read_csv('DATA.csv',sep=',')
 df["DATE"] = pd.to_datetime(df["DATE"])
+#df['year']=pd.DatetimeIndex(df["DATE"]).year
 df=df.sort_values(by=["DATE"],ascending=True)
-print(df)
+# table=pd.pivot_table(df,values='UNRATE(%)',index=['year'],aggfunc=np.mean)
+# df=table.reset_index()
+# df.columns=['year','mean unemployment rate']
+# print(df)
+
+# df2=pd.read_csv('arrests_national_adults.csv',sep=',')
+# #df2=df2.sort_values(by=["year"],ascending=True)
+# print(df2)
+
+# mergeddf=df2.merge(df,how='left',on=['year'])
+# mergeddf=mergeddf.sort_values(by=["year"],ascending=True)
+# mergeddf=
+
+
+def mergethem():
+    dflist=[]
+    for i in ['corruption.csv','cost_of_living.csv','richest_countries.csv','tourism.csv','unemployment.csv']:
+        dflist.append(pd.read_csv(i))
+
+    mergeddf=dflist[0]
+    for i in range(1,len(dflist)):
+        mergeddf=mergeddf.merge(dflist[i],how='inner',on=['country'])
+
+    mergeddf.to_csv('MERGED.csv')
+
+
 
 ## correlation matrix heatmap
 def MatrixHeatmap():
@@ -32,7 +58,21 @@ def AutoVizTest(ForceGen):
     else:
         print('Visuals already exist, and it takes a while to generate them. You can coerce this function by passing in True as the first positional argument')
 
-#AutoVizTest(False)
+AutoVizTest(True)
+
+def TimeEncoding(datelist):
+    outputlist=[]
+    for i in range(1,(len(datelist)+1)):
+        outputlist.append(float(i/len(datelist)))
+    return outputlist
+
+def StandardizeList(TargetList):
+    outputlist=[]
+    themean=np.mean(TargetList)
+    thestd=np.std(TargetList)
+    for i in TargetList:
+        outputlist.append((i-themean)/thestd)
+    return outputlist
 
 def PrepareNeuralNetworkData(df,TargetColumn):
     TrainingSizePCT=0.75
