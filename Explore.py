@@ -58,7 +58,7 @@ def AutoVizTest(ForceGen):
     else:
         print('Visuals already exist, and it takes a while to generate them. You can coerce this function by passing in True as the first positional argument')
 
-AutoVizTest(True)
+#AutoVizTest(True)
 
 def TimeEncoding(datelist):
     outputlist=[]
@@ -74,30 +74,23 @@ def StandardizeList(TargetList):
         outputlist.append((i-themean)/thestd)
     return outputlist
 
-def PrepareNeuralNetworkData(df,TargetColumn):
+def Partition(TargetList):
     TrainingSizePCT=0.75
-    TargetList=df[TargetColumn].to_list()
-    DATEList=df['DATE'].to_list()
-    OutputList=df['UNRATE(%)'].to_list()
-    SetSize=len(TargetList)
     TestSizePCT=0.25
+    SetSize=len(TargetList)
     TrainingSize=round(TrainingSizePCT*SetSize)
     TestSize=round(TestSizePCT*SetSize)
-    InputTrainData=[]
     OutputTrainData=[]
-    InputTestData=[]
     OutputTestData=[]
 
     for i in range(0,TrainingSize):
-        InputTrainData.append([DATEList[i],TargetList[i]])
-        OutputTrainData.append(OutputList[i])
+        OutputTrainData.append(TargetList[i])
     
     for i in range(1,TestSize):
         idx=i+TrainingSize
-        InputTestData.append([DATEList[idx],TargetList[idx]])
-        OutputTestData.append(OutputList[idx])
+        OutputTestData.append(TargetList[idx])
     
-    return InputTrainData,OutputTrainData,InputTestData,OutputTestData
+    return OutputTrainData,OutputTestData
 
 
 def Neuralize():
