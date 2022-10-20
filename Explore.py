@@ -24,7 +24,6 @@ df=df.sort_values(by=["DATE"],ascending=True)
 # mergeddf=mergeddf.sort_values(by=["year"],ascending=True)
 # mergeddf=
 
-
 def mergethem():
     dflist=[]
     for i in ['corruption.csv','cost_of_living.csv','richest_countries.csv','tourism.csv','unemployment.csv']:
@@ -35,8 +34,6 @@ def mergethem():
         mergeddf=mergeddf.merge(dflist[i],how='inner',on=['country'])
 
     mergeddf.to_csv('MERGED.csv')
-
-
 
 ## correlation matrix heatmap
 def MatrixHeatmap():
@@ -60,6 +57,7 @@ def AutoVizTest(ForceGen):
 
 #AutoVizTest(True)
 
+##### THIS APPROACH SHOULD BE MODIFIED FOR AN INFINITELY ENCODEABLE DATE. FOLLOWING 1/TIMEDELTA(TARGETTIME,TIMEpt0)
 def TimeEncoding(datelist):
     outputlist=[]
     for i in range(1,(len(datelist)+1)):
@@ -93,6 +91,7 @@ def Partition(TargetList):
     return OutputTrainData,OutputTestData
 
 
+
 def Neuralize():
     InputTrainData,OutputTrainData,InputTestData,OutputTestData=PrepareNeuralNetworkData(df,'QUATERLY REAL GDP')
     training_set_inputs = array(InputTrainData)
@@ -103,3 +102,5 @@ def Neuralize():
         output = 1 / (1 + exp(-(dot(training_set_inputs, synaptic_weights))))
         synaptic_weights += dot(training_set_inputs.T, (training_set_outputs - output) * output * (1 - output))
     print(1 / (1 + exp(-(dot(array([1, 0, 0]), synaptic_weights)))))
+
+print(TimeEncoding(df['DATE'].tolist()))
