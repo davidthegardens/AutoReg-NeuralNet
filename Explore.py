@@ -57,11 +57,10 @@ def AutoVizTest(ForceGen):
 
 #AutoVizTest(True)
 
-##### THIS APPROACH SHOULD BE MODIFIED FOR AN INFINITELY ENCODEABLE DATE. FOLLOWING 1/TIMEDELTA(TARGETTIME,TIMEpt0)
 def TimeEncoding(datelist):
     outputlist=[]
     for i in range(1,(len(datelist)+1)):
-        outputlist.append(float(i/len(datelist)))
+        outputlist.append(float(1/i))
     return outputlist
 
 def StandardizeList(TargetList):
