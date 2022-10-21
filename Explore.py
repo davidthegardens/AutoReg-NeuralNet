@@ -66,23 +66,14 @@ def TimeEncoding(datelist):
     return outputlist
 
 ## Must cache min max for decoding
-def TimePartition(TargetList):
+def TimePartition(df):
+    ##testsize is population-TrainingSize
     TrainingSizePCT=0.75
-    TestSizePCT=0.25
-    SetSize=len(TargetList)
-    TrainingSize=round(TrainingSizePCT*SetSize)
-    TestSize=round(TestSizePCT*SetSize)
-    OutputTrainData=[]
-    OutputTestData=[]
-
-    for i in range(0,TrainingSize):
-        OutputTrainData.append(TargetList[i])
-    
-    for i in range(1,TestSize):
-        idx=i+TrainingSize
-        OutputTestData.append(TargetList[idx])
-    
-    return OutputTrainData,OutputTestData
+    SetSize=len(df)
+    TrainingSize=int(round(TrainingSizePCT*SetSize))
+    TrainingData=df.head(TrainingSize)
+    TestData=df.iloc[TrainingSize:]
+    return TrainingData,TestData
 
 def Squishify(x):
     return 1/(1+np.exp(-x))
@@ -91,7 +82,6 @@ def Encode(df):
     colnames=list(df.columns.values)
     for i in colnames:
         if df[i].dtypes in ['float64','int64']:
-            print(df[i].dtypes)
             ###CHANGE RESCALING TO [-5,5] FROM IMPROVED ACCURACY POST-SIGMOID
             #### potential problem if test data surpasses min/max? 
             #Min max feature rescaling between -5 and 5
@@ -100,4 +90,3 @@ def Encode(df):
             df["new "+i]=Squishify(df['new '+i])
     return df
 
-Encode(df).to_csv('encoded.csv')
