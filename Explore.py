@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from autoviz.AutoViz_Class import AutoViz_Class
 import os
 import numpy as np
+from sklearn.preprocessing import normalize
 
 #set and sort dataframe
 df=pd.read_csv('DATA.csv',sep=',')
@@ -57,21 +58,15 @@ def AutoVizTest(ForceGen):
 
 #AutoVizTest(True)
 
+## Must Cache Date0 for decoding
 def TimeEncoding(datelist):
     outputlist=[]
     for i in range(1,(len(datelist)+1)):
         outputlist.append(float(1/i))
     return outputlist
 
-def StandardizeList(TargetList):
-    outputlist=[]
-    themean=np.mean(TargetList)
-    thestd=np.std(TargetList)
-    for i in TargetList:
-        outputlist.append((i-themean)/thestd)
-    return outputlist
-
-def Partition(TargetList):
+## Must cache min max for decoding
+def TimePartition(TargetList):
     TrainingSizePCT=0.75
     TestSizePCT=0.25
     SetSize=len(TargetList)
@@ -89,17 +84,19 @@ def Partition(TargetList):
     
     return OutputTrainData,OutputTestData
 
+def Squishify(x):
+    return 1/(1+np.exp(-x))
 
+def Encode(df):
+    colnames=list(df.columns.values)
+    for i in colnames:
+        if df[i].dtypes in ['float64','int64']:
+            print(df[i].dtypes)
+            ###CHANGE RESCALING TO [-5,5] FROM IMPROVED ACCURACY POST-SIGMOID
+            #Min max feature rescaling between -1 and 1
+            df['new '+i]=-1+(((df[i]-np.min(df[i]))*2)/(np.max(df[i])-np.min(df[i])))
+            #sigmoid
+            #df["new "+i]=Squishify(df['new '+i])
+    return df
 
-def Neuralize():
-    InputTrainData,OutputTrainData,InputTestData,OutputTestData=PrepareNeuralNetworkData(df,'QUATERLY REAL GDP')
-    training_set_inputs = array(InputTrainData)
-    training_set_outputs = array([OutputTrainData]).T
-    random.seed(1)
-    synaptic_weights = 2 * random.random((2, 1)) - 1
-    for iteration in range(10000):
-        output = 1 / (1 + exp(-(dot(training_set_inputs, synaptic_weights))))
-        synaptic_weights += dot(training_set_inputs.T, (training_set_outputs - output) * output * (1 - output))
-    print(1 / (1 + exp(-(dot(array([1, 0, 0]), synaptic_weights)))))
-
-print(TimeEncoding(df['DATE'].tolist()))
+Encode(df).to_csv('encoded.csv')
