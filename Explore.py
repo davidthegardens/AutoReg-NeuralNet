@@ -93,10 +93,11 @@ def Encode(df):
         if df[i].dtypes in ['float64','int64']:
             print(df[i].dtypes)
             ###CHANGE RESCALING TO [-5,5] FROM IMPROVED ACCURACY POST-SIGMOID
-            #Min max feature rescaling between -1 and 1
-            df['new '+i]=-1+(((df[i]-np.min(df[i]))*2)/(np.max(df[i])-np.min(df[i])))
+            #### potential problem if test data surpasses min/max? 
+            #Min max feature rescaling between -5 and 5
+            df['new '+i]=-5+(((df[i]-np.min(df[i]))*-10)/(np.max(df[i])-np.min(df[i])))
             #sigmoid
-            #df["new "+i]=Squishify(df['new '+i])
+            df["new "+i]=Squishify(df['new '+i])
     return df
 
 Encode(df).to_csv('encoded.csv')
