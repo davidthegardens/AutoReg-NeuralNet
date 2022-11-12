@@ -163,13 +163,17 @@ def EvaluateBases(decimals,range,df,xcolname,ycolname):
         Mape,Maspe,testdf=TestLinearity(testdf,xcolname)
         MAPEList.append(Mape)
         MASPEList.append(Maspe)
-        plt.scatter(testdf[xcolname],testdf['logged'])
-        plt.scatter(testdf[xcolname],testdf['FORECAST'])
+        testdf['unlogged forecast']=base**testdf['FORECAST']
+        # plt.scatter(testdf[xcolname],testdf['logged'])
+        # plt.scatter(testdf[xcolname],testdf['FORECAST'])
+        plt.scatter(testdf[xcolname],testdf['unlogged forecast'])
+        plt.scatter(testdf[xcolname],testdf[ycolname])
+        
     Results=pd.DataFrame({'LogBase':TestBaseList,'MAPE':MAPEList,'MASPE':MASPEList})
     plt.savefig('scat.png')
     return Results
 
-print(EvaluateBases(1,[2,10],df,"DATE","UNRATE(%)"))
+print(EvaluateBases(1,[2,3],df,"DATE","UNRATE(%)"))
 
 #1) MAPE Remains constant despite transformations, this is purely a mathematical phenomena i believe
 #3) Increasing the base really only makes larger numbers closer to eachother, which doesnt exactly help the regression. Although it may look more precise, when performing a real world prediction it causes a lack of accuracy when dealing with actuals.
