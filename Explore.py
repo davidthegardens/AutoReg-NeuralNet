@@ -114,12 +114,12 @@ def TestBases(decimals,xrange):
 
 #print(TestBases(0.01,[-1,1]))
 
-def TestLinearity(testdf,ycolname):
+def TestLinearity(testdf,xcolname):
     lm=LinearRegression()
-    lm.fit(testdf[[ycolname]],testdf[['logged']])
+    lm.fit(testdf[[xcolname]],testdf[['logged']])
     coeff=lm.coef_[0][0]
     intercept=lm.intercept_[0]
-    DATEList=testdf[ycolname].tolist()
+    DATEList=testdf[xcolname].tolist()
     forecast=[]
     for i in DATEList:
         x=abs((i - DATEList[0]).days)
@@ -127,7 +127,7 @@ def TestLinearity(testdf,ycolname):
     testdf['FORECAST']=forecast
     testdf['MAPE']=abs(testdf['logged']-testdf['FORECAST'])/abs(testdf['logged'])
     testdf['MASPE']=(testdf['logged']+testdf['FORECAST']/testdf['logged'])**2
-    return np.average(testdf['MAPE'].tolist()),np.average(testdf['MASPE'])-1
+    return np.average(testdf['MAPE']),np.average(testdf['MASPE'])-1
 
 def Logger(x,base):
     if x==0:
@@ -136,29 +136,31 @@ def Logger(x,base):
     else:
         return math.log(x,base)
 
-def Shifter(df,xcolname,ycolname,base):
-    potenshift=np.min(df[xcolname])
-    testdf=pd.DataFrame({xcolname:df[xcolname]})
+def Shifter(df,ycolname,base):
+    potenshift=np.min(df[ycolname])
+    testdf=pd.DataFrame({ycolname:df[ycolname]})
     if potenshift<0:
-        testdf['logged']=df.apply(lambda row: Logger((row[xcolname]-potenshift),base),axis=1)
+        testdf['logged']=df.apply(lambda row: Logger((row[ycolname]-potenshift),base),axis=1)
         testdf['logged']=testdf['logged']+potenshift
     else:
-        testdf['logged']=df.apply(lambda row: Logger(row[xcolname],base),axis=1)
+        testdf['logged']=df.apply(lambda row: Logger(row[ycolname],base),axis=1)
         #print(testdf)
     testdf.fillna(testdf.mean(), inplace=True)
     return testdf
 
-def EvaluateBases(decimals,range,df,ycolname,xcolname):
+def EvaluateBases(decimals,range,df,xcolname,ycolname):
     TestBaseList=TestBases(decimals,range)
     MAPEList=[]
     MASPEList=[]
     for base in TestBaseList:
-        testdf=Shifter(df,xcolname,ycolname,base)
-        testdf[ycolname]=df[ycolname]
-        Mape,Maspe=TestLinearity(testdf,ycolname)
+        testdf=Shifter(df,ycolname,base)
+        testdf[xcolname]=df[xcolname]
+        Mape,Maspe=TestLinearity(testdf,xcolname)
         MAPEList.append(Mape)
         MASPEList.append(Maspe)
+        plt.plot(testdf[xcolname].tolist(),testdf['logged'].tolist())
     Results=pd.DataFrame({'LogBase':TestBaseList,'MAPE':MAPEList,'MASPE':MASPEList})
+    plt.show()
     return Results
-  
-print(EvaluateBases(0.1,[2,100],df,"DATE","QUARTERLY GDP GROWTH RATE (%)"))
+
+print(EvaluateBases(0.1,[2,3],df,"DATE","PPI-CONST MAT."))
