@@ -102,36 +102,63 @@ def TestBases(decimals,xrange):
     Steps=int(Size/decimals)
     print(Steps)
     for x in range(0,Steps+1):
-        if round((max(xrange)-decimals*x))==0:
-            Relist.append(round((max(xrange)-decimals*x),int(math.log(1/decimals,10))))
+        Relist.append(round((max(xrange)-decimals*x),int(math.log(1/decimals,10))))
+    print(Relist)
+    if min(Relist)<0:
+        raise Exception("Cannot compute negative log bases, change base range.")
+    if 0 in Relist:
+        raise Exception("Log base 0 evaluates to undefined, adjust base range.")
+    if 1 in Relist:
+        raise Exception("Log base 1 evaluates to negative infinity, and is undefined. Consider adjusting base range.")
     return Relist
 
 #print(TestBases(0.01,[-1,1]))
 
-def GetMape(testdf,ycolname,xcolname):
+def TestLinearity(testdf,ycolname):
     lm=LinearRegression()
-    lm.fit(df[[ycolname]],df[[xcolname]])
+    lm.fit(testdf[[ycolname]],testdf[['logged']])
     coeff=lm.coef_[0][0]
     intercept=lm.intercept_[0]
-    DATEList=ycolname.tolist()
+    DATEList=testdf[ycolname].tolist()
     forecast=[]
     for i in DATEList:
         x=abs((i - DATEList[0]).days)
         forecast.append((x*coeff)+intercept)
     testdf['FORECAST']=forecast
-    testdf['MAPE']=abs(testdf['UNRATE(%)']-testdf['FORECAST'])/testdf['UNRATE(%)']
-    return np.average(testdf['MAPE'].tolist())
+    testdf['MAPE']=abs(testdf['logged']-testdf['FORECAST'])/abs(testdf['logged'])
+    testdf['MASPE']=(testdf['logged']+testdf['FORECAST']/testdf['logged'])**2
+    return np.average(testdf['MAPE'].tolist()),np.average(testdf['MASPE'])-1
 
 def Logger(x,base):
     if x==0:
-        return 0
+        ####This should always evaluate to -infinity but this would destroy any chance at evaluating models
+        return np.nan
     else:
         return math.log(x,base)
 
-def EvaluateBases(TestBaseList,df,ycolname,xcolname):
-    for base in TestBaseList:
-        testdf=df[ycolname]
-        print(base)
+def Shifter(df,xcolname,ycolname,base):
+    potenshift=np.min(df[xcolname])
+    testdf=pd.DataFrame({xcolname:df[xcolname]})
+    if potenshift<0:
+        testdf['logged']=df.apply(lambda row: Logger((row[xcolname]-potenshift),base),axis=1)
+        testdf['logged']=testdf['logged']+potenshift
+    else:
         testdf['logged']=df.apply(lambda row: Logger(row[xcolname],base),axis=1)
-        
-EvaluateBases([1,2,3],df,"DATE","UNRATE(%)")
+        #print(testdf)
+    testdf.fillna(testdf.mean(), inplace=True)
+    return testdf
+
+def EvaluateBases(decimals,range,df,ycolname,xcolname):
+    TestBaseList=TestBases(decimals,range)
+    MAPEList=[]
+    MASPEList=[]
+    for base in TestBaseList:
+        testdf=Shifter(df,xcolname,ycolname,base)
+        testdf[ycolname]=df[ycolname]
+        Mape,Maspe=TestLinearity(testdf,ycolname)
+        MAPEList.append(Mape)
+        MASPEList.append(Maspe)
+    Results=pd.DataFrame({'LogBase':TestBaseList,'MAPE':MAPEList,'MASPE':MASPEList})
+    return Results
+  
+print(EvaluateBases(0.1,[2,100],df,"DATE","QUARTERLY GDP GROWTH RATE (%)"))
