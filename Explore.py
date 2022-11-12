@@ -115,19 +115,24 @@ def TestBases(decimals,xrange):
 #print(TestBases(0.01,[-1,1]))
 
 def TestLinearity(testdf,xcolname):
-    lm=LinearRegression()
-    lm.fit(testdf[[xcolname]],testdf[['logged']])
-    coeff=lm.coef_[0][0]
-    intercept=lm.intercept_[0]
     DATEList=testdf[xcolname].tolist()
-    forecast=[]
+    DATEIdx=[]
     for i in DATEList:
-        x=abs((i - DATEList[0]).days)
+        DATEIdx.append(abs((i - DATEList[0]).days))
+    testdf['DATEIdx']=DATEIdx
+    print(testdf)
+    lm=LinearRegression()
+    lm.fit(testdf[['DATEIdx']],testdf['logged'])
+    coeff=lm.coef_[0]
+    intercept=lm.intercept_
+    forecast=[]
+    for x in DATEIdx:
         forecast.append((x*coeff)+intercept)
+    print(coeff,intercept)
     testdf['FORECAST']=forecast
     testdf['MAPE']=abs(testdf['logged']-testdf['FORECAST'])/abs(testdf['logged'])
     testdf['MASPE']=(testdf['logged']+testdf['FORECAST']/testdf['logged'])**2
-    return np.average(testdf['MAPE']),np.average(testdf['MASPE'])-1
+    return np.average(testdf['MAPE']),np.average(testdf['MASPE'])-1,testdf
 
 def Logger(x,base):
     if x==0:
@@ -155,12 +160,16 @@ def EvaluateBases(decimals,range,df,xcolname,ycolname):
     for base in TestBaseList:
         testdf=Shifter(df,ycolname,base)
         testdf[xcolname]=df[xcolname]
-        Mape,Maspe=TestLinearity(testdf,xcolname)
+        Mape,Maspe,testdf=TestLinearity(testdf,xcolname)
         MAPEList.append(Mape)
         MASPEList.append(Maspe)
-        plt.plot(testdf[xcolname].tolist(),testdf['logged'].tolist())
+        plt.scatter(testdf[xcolname],testdf['logged'])
+        plt.scatter(testdf[xcolname],testdf['FORECAST'])
     Results=pd.DataFrame({'LogBase':TestBaseList,'MAPE':MAPEList,'MASPE':MASPEList})
-    plt.show()
+    plt.savefig('scat.png')
     return Results
 
-print(EvaluateBases(0.1,[2,3],df,"DATE","PPI-CONST MAT."))
+print(EvaluateBases(1,[2,10],df,"DATE","UNRATE(%)"))
+
+#1) MAPE Remains constant despite transformations, this is purely a mathematical phenomena i believe
+#3) Increasing the base really only makes larger numbers closer to eachother, which doesnt exactly help the regression. Although it may look more precise, when performing a real world prediction it causes a lack of accuracy when dealing with actuals.
