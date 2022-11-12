@@ -6,6 +6,9 @@ from autoviz.AutoViz_Class import AutoViz_Class
 import os
 import numpy as np
 from sklearn.preprocessing import normalize
+import math
+from sklearn.linear_model import LinearRegression
+from datetime import datetime
 
 #set and sort dataframe
 df=pd.read_csv('DATA.csv',sep=',')
@@ -90,3 +93,45 @@ def Encode(df):
             df["new "+i]=Squishify(df['new '+i])
     return df
 
+def TestBases(decimals,xrange):
+    Relist=[]
+    print(xrange)
+    xrange.sort()
+    print(xrange)
+    Size=abs(xrange[1]-xrange[0])
+    Steps=int(Size/decimals)
+    print(Steps)
+    for x in range(0,Steps+1):
+        if round((max(xrange)-decimals*x))==0:
+            Relist.append(round((max(xrange)-decimals*x),int(math.log(1/decimals,10))))
+    return Relist
+
+#print(TestBases(0.01,[-1,1]))
+
+def GetMape(testdf,ycolname,xcolname):
+    lm=LinearRegression()
+    lm.fit(df[[ycolname]],df[[xcolname]])
+    coeff=lm.coef_[0][0]
+    intercept=lm.intercept_[0]
+    DATEList=ycolname.tolist()
+    forecast=[]
+    for i in DATEList:
+        x=abs((i - DATEList[0]).days)
+        forecast.append((x*coeff)+intercept)
+    testdf['FORECAST']=forecast
+    testdf['MAPE']=abs(testdf['UNRATE(%)']-testdf['FORECAST'])/testdf['UNRATE(%)']
+    return np.average(testdf['MAPE'].tolist())
+
+def Logger(x,base):
+    if x==0:
+        return 0
+    else:
+        return math.log(x,base)
+
+def EvaluateBases(TestBaseList,df,ycolname,xcolname):
+    for base in TestBaseList:
+        testdf=df[ycolname]
+        print(base)
+        testdf['logged']=df.apply(lambda row: Logger(row[xcolname],base),axis=1)
+        
+EvaluateBases([1,2,3],df,"DATE","UNRATE(%)")
