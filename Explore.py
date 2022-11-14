@@ -93,6 +93,15 @@ def Encode(df):
             df["new "+i]=Squishify(df['new '+i])
     return df
 
+def DateIndexer(df,xcolname):
+    DATEList=df[xcolname].tolist()
+    DATEIdx=[]
+    for i in DATEList:
+        DATEIdx.append(abs((i - DATEList[0]).days))
+    df[xcolname]=DATEIdx
+    return df
+
+
 def TestBases(decimals,xrange):
     Relist=[]
     print(xrange)
@@ -115,21 +124,11 @@ def TestBases(decimals,xrange):
 #print(TestBases(0.01,[-1,1]))
 
 def TestLinearity(testdf,xcolname):
-    DATEList=testdf[xcolname].tolist()
-    DATEIdx=[]
-    for i in DATEList:
-        DATEIdx.append(abs((i - DATEList[0]).days))
-    testdf['DATEIdx']=DATEIdx
-    print(testdf)
     lm=LinearRegression()
-    lm.fit(testdf[['DATEIdx']],testdf['logged'])
+    lm.fit(testdf[[xcolname]],testdf['logged'])
     coeff=lm.coef_[0]
     intercept=lm.intercept_
-    forecast=[]
-    for x in DATEIdx:
-        forecast.append((x*coeff)+intercept)
-    print(coeff,intercept)
-    testdf['FORECAST']=forecast
+    testdf['FORECAST']=testdf[xcolname]*coeff+intercept
     testdf['MAPE']=abs(testdf['logged']-testdf['FORECAST'])/abs(testdf['logged'])
     testdf['MASPE']=(testdf['logged']+testdf['FORECAST']/testdf['logged'])**2
     return np.average(testdf['MAPE']),np.average(testdf['MASPE'])-1,testdf
@@ -141,36 +140,36 @@ def Logger(x,base):
     else:
         return math.log(x,base)
 
-def Shifter(df,ycolname,base):
-    potenshift=np.min(df[ycolname])
-    testdf=pd.DataFrame({ycolname:df[ycolname]})
+def Shifter(testdf,ycolname,base,potenshift):
     if potenshift<0:
-        testdf['logged']=df.apply(lambda row: Logger((row[ycolname]-potenshift),base),axis=1)
+        testdf['logged']=testdf.apply(lambda row: Logger((row[ycolname]-potenshift),base),axis=1)
         testdf['logged']=testdf['logged']+potenshift
     else:
-        testdf['logged']=df.apply(lambda row: Logger(row[ycolname],base),axis=1)
+        testdf['logged']=testdf.apply(lambda row: Logger(row[ycolname],base),axis=1)
         #print(testdf)
     testdf.fillna(testdf.mean(), inplace=True)
     return testdf
 
 def EvaluateBases(decimals,range,df,xcolname,ycolname):
+    if df[xcolname].dtypes=='datetime64[ns]':
+        df=DateIndexer(df,xcolname)
     TestBaseList=TestBases(decimals,range)
+    potenshift=np.min(df[ycolname])
+    testdf=pd.DataFrame({ycolname:df[ycolname],xcolname:df[xcolname]})
     MAPEList=[]
     MASPEList=[]
     for base in TestBaseList:
-        testdf=Shifter(df,ycolname,base)
-        testdf[xcolname]=df[xcolname]
+        testdf=Shifter(testdf,ycolname,base,potenshift)
         Mape,Maspe,testdf=TestLinearity(testdf,xcolname)
         MAPEList.append(Mape)
         MASPEList.append(Maspe)
-        testdf['unlogged forecast']=base**testdf['FORECAST']
         # plt.scatter(testdf[xcolname],testdf['logged'])
         # plt.scatter(testdf[xcolname],testdf['FORECAST'])
-        plt.scatter(testdf[xcolname],testdf['unlogged forecast'])
-        plt.scatter(testdf[xcolname],testdf[ycolname])
+        # plt.scatter(testdf[xcolname],testdf['unlogged forecast'])
+        # plt.scatter(testdf[xcolname],testdf[ycolname])
         
     Results=pd.DataFrame({'LogBase':TestBaseList,'MAPE':MAPEList,'MASPE':MASPEList})
-    plt.savefig('scat.png')
+    # plt.savefig('scat.png')
     return Results
 
 print(EvaluateBases(1,[2,3],df,"DATE","UNRATE(%)"))
