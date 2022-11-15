@@ -121,8 +121,8 @@ def TestBases(decimals,xrange,operation):
         if 0 in Relist:
             raise Exception("You are attempting to lag at 0, this will not do anything.")
         print(decimals)
-        if int(decimals)!=decimals or decimals<1:
-            raise Exception("The lag operation only accepts positive integers.")
+        if int(decimals)!=decimals:
+            raise Exception("The lag operation only accepts integers.")
 
     return Relist
 
