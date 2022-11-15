@@ -15,6 +15,7 @@ df=pd.read_csv('DATA.csv',sep=',')
 df["DATE"] = pd.to_datetime(df["DATE"])
 #df['year']=pd.DatetimeIndex(df["DATE"]).year
 df=df.sort_values(by=["DATE"],ascending=True)
+cleancopy=df
 # table=pd.pivot_table(df,values='UNRATE(%)',index=['year'],aggfunc=np.mean)
 # df=table.reset_index()
 # df.columns=['year','mean unemployment rate']
@@ -118,9 +119,6 @@ def TestBases(decimals,xrange,operation):
         if 1 in Relist:
             raise Exception("Log base 1 evaluates to negative infinity, and is undefined. Consider adjusting base range.")
     if operation=='lag':
-        if 0 in Relist:
-            raise Exception("You are attempting to lag at 0, this will not do anything.")
-        print(decimals)
         if int(decimals)!=decimals:
             raise Exception("The lag operation only accepts integers.")
 
@@ -188,21 +186,42 @@ def EvaluateBases(decimals,rangex,df,xcolname,ycolname,operation):
         plt.scatter(testdf[xcolname],testdf['FORECAST'])
 
     Results=pd.DataFrame({operation:TestBaseList,'MAPE':MAPEList,'n':nList,'R2':r2List})
+    InclusionList=None
     if operation=='power':
         Include=Results[Results['R2']==np.max(Results['R2'])]
-        print(Include)
         BestPower=Include['power'].tolist()[0]
-        print(BestPower)
-        if BestPower<=1:
-            InclusionList=BestPower
-        else:
+        if BestPower>1:
             InclusionList=list(range(1,math.trunc(BestPower)+1))
             InclusionList.append(BestPower)
-        return Results, InclusionList
-    else:
-        return Results
+    return Results,Include['R2'].tolist()[3],Include[operation].tolist()[0],InclusionList
 
-print(EvaluateBases(0.1,[2,10],df,"DATE","CONSUMER CONF INDEX",'power'))
+def OptimizationScan(df,xcolname,ycolname):
+    r2s=[]
+    r2snames=['lag','power','power','log']
+    BestChanges=[]
+    Results,r2,BestChange=EvaluateBases(1,[-100,100],df,xcolname,ycolname,'lag')
+    r2s.append(r2)
+    BestChange.append(BestChange)
+    Results,rootr2,BestChange=EvaluateBases(0.1,[-1,1],df,xcolname,ycolname,'power')
+    r2s.append(rootr2)
+    BestChange.append(BestChange)
+    Results,expr2,BestChange=EvaluateBases(1,[-20,20],df,xcolname,ycolname,'power')
+    r2s.append(expr2)
+    BestChange.append(BestChange)
+    Results,logr2,BestChange=EvaluateBases(1,[2,2],df,xcolname,ycolname,'log')
+    tempdf=cleancopy[xcolname,ycolname]
+    a,b,regr2=TestLinearity(tempdf,xcolname)
+    BestChange.append(BestChange)
+    if logr2>regr2:
+        r2s.append(logr2)
+    else:
+        r2s.append(0)
+    Choices=pd.DataFrame({'Operation':r2snames,'R2':r2s,'Best Change':BestChanges})
+    Choice=Choices[Choices['R2']==np.max(Choices['R2'])]
+
+
+
+#print(EvaluateBases(1,[-100,100],df,"DATE","CONSUMER CONF INDEX",'lag'))
 
 
 #Operations: power,log,lag
