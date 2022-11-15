@@ -102,36 +102,43 @@ def DateIndexer(df,xcolname):
     return df
 
 
-def TestBases(decimals,xrange):
+def TestBases(decimals,xrange,operation):
     Relist=[]
-    print(xrange)
     xrange.sort()
-    print(xrange)
     Size=abs(xrange[1]-xrange[0])
     Steps=int(Size/decimals)
-    print(Steps)
     for x in range(0,Steps+1):
         Relist.append(round((max(xrange)-decimals*x),int(math.log(1/decimals,10))))
     print(Relist)
-    if min(Relist)<0:
-        raise Exception("Cannot compute negative log bases, change base range.")
-    if 0 in Relist:
-        raise Exception("Log base 0 evaluates to undefined, adjust base range.")
-    if 1 in Relist:
-        raise Exception("Log base 1 evaluates to negative infinity, and is undefined. Consider adjusting base range.")
+    if operation=='log':
+        if min(Relist)<0:
+            raise Exception("Cannot compute negative log bases, change base range.")
+        if 0 in Relist:
+            raise Exception("Log base 0 evaluates to undefined, adjust base range.")
+        if 1 in Relist:
+            raise Exception("Log base 1 evaluates to negative infinity, and is undefined. Consider adjusting base range.")
+    if operation=='lag':
+        if 0 in Relist:
+            raise Exception("You are attempting to lag at 0, this will not do anything.")
+        print(decimals)
+        if int(decimals)!=decimals or decimals<1:
+            raise Exception("The lag operation only accepts positive integers.")
+
     return Relist
 
 #print(TestBases(0.01,[-1,1]))
 
 def TestLinearity(testdf,xcolname):
     lm=LinearRegression()
-    lm.fit(testdf[[xcolname]],testdf['logged'])
+    lm.fit(testdf[[xcolname]],testdf['Transformed'])
     coeff=lm.coef_[0]
     intercept=lm.intercept_
     testdf['FORECAST']=testdf[xcolname]*coeff+intercept
-    testdf['MAPE']=abs(testdf['logged']-testdf['FORECAST'])/abs(testdf['logged'])
-    testdf['MASPE']=(testdf['logged']+testdf['FORECAST']/testdf['logged'])**2
-    return np.average(testdf['MAPE']),np.average(testdf['MASPE'])-1,testdf
+    testdf['MAPE']=abs(testdf['Transformed']-testdf['FORECAST'])/abs(testdf['Transformed'])
+    testdf['SE']=(testdf['Transformed']-testdf['FORECAST'])**2
+    testdf['ST']=(testdf['Transformed']-np.mean(testdf['Transformed']))**2
+
+    return np.mean(testdf['MAPE']),len(testdf),1-(np.sum(testdf['SE'])/np.sum(testdf['ST']))
 
 def Logger(x,base):
     if x==0:
@@ -140,39 +147,62 @@ def Logger(x,base):
     else:
         return math.log(x,base)
 
-def Shifter(testdf,ycolname,base,potenshift):
-    if potenshift<0:
-        testdf['logged']=testdf.apply(lambda row: Logger((row[ycolname]-potenshift),base),axis=1)
-        testdf['logged']=testdf['logged']+potenshift
-    else:
-        testdf['logged']=testdf.apply(lambda row: Logger(row[ycolname],base),axis=1)
-        #print(testdf)
-    testdf.fillna(testdf.mean(), inplace=True)
+def Shifter(testdf,ycolname,base,potenshift,operation):
+    
+    if operation == 'log':
+        if potenshift<0:
+            print('shifted')
+            testdf['Transformed']=testdf.apply(lambda row: Logger((row[ycolname]-potenshift),base),axis=1)
+            testdf['Transformed']=testdf['Transformed']+potenshift
+        else:
+            testdf['Transformed']=testdf.apply(lambda row: Logger(row[ycolname],base),axis=1)
+    elif operation == 'power':
+        ##somehow this (below) is okay. Sqrt(-1)=Undefined but -1**0.5=-1. I tried using this to cause a math error but instead it just worked, so here we are. I'm not about to code to turn float into fraction, then check odd or even of it's denominator, so this is staying.
+        testdf['Transformed']=testdf[ycolname]**base
+    #print(testdf)
+    elif operation == 'lag':
+        testdf['Transformed']=testdf[ycolname].shift(base)
+    testdf.dropna(inplace=True)
+    #testdf.fillna(testdf.mean(), inplace=True)
     return testdf
 
-def EvaluateBases(decimals,range,df,xcolname,ycolname):
+def EvaluateBases(decimals,rangex,df,xcolname,ycolname,operation):
     if df[xcolname].dtypes=='datetime64[ns]':
         df=DateIndexer(df,xcolname)
-    TestBaseList=TestBases(decimals,range)
+    TestBaseList=TestBases(decimals,rangex,operation)
     potenshift=np.min(df[ycolname])
-    testdf=pd.DataFrame({ycolname:df[ycolname],xcolname:df[xcolname]})
+    dftemplate=pd.DataFrame({ycolname:df[ycolname],xcolname:df[xcolname]})
     MAPEList=[]
-    MASPEList=[]
+    nList=[]
+    r2List=[]
     for base in TestBaseList:
-        testdf=Shifter(testdf,ycolname,base,potenshift)
-        Mape,Maspe,testdf=TestLinearity(testdf,xcolname)
+        dftemplate=pd.DataFrame({ycolname:df[ycolname],xcolname:df[xcolname]})
+        testdf=Shifter(dftemplate,ycolname,base,potenshift,operation)
+        Mape,n,r2=TestLinearity(testdf,xcolname)
         MAPEList.append(Mape)
-        MASPEList.append(Maspe)
-        # plt.scatter(testdf[xcolname],testdf['logged'])
-        # plt.scatter(testdf[xcolname],testdf['FORECAST'])
+        nList.append(n)
+        r2List.append(r2)
+        # plt.scatter(testdf[xcolname],testdf['Transformed'])
+        plt.scatter(testdf[xcolname],testdf['Transformed'])
         # plt.scatter(testdf[xcolname],testdf['unlogged forecast'])
-        # plt.scatter(testdf[xcolname],testdf[ycolname])
-        
-    Results=pd.DataFrame({'LogBase':TestBaseList,'MAPE':MAPEList,'MASPE':MASPEList})
-    # plt.savefig('scat.png')
-    return Results
+        plt.scatter(testdf[xcolname],testdf['FORECAST'])
 
-print(EvaluateBases(1,[2,3],df,"DATE","UNRATE(%)"))
+    Results=pd.DataFrame({operation:TestBaseList,'MAPE':MAPEList,'n':nList,'R2':r2List})
+    if operation=='power':
+        Include=Results[Results['R2']==np.max(Results['R2'])]
+        print(Include)
+        BestPower=Include['power'].tolist()[0]
+        print(BestPower)
+        if BestPower<=1:
+            InclusionList=BestPower
+        else:
+            InclusionList=list(range(1,math.trunc(BestPower)+1))
+            InclusionList.append(BestPower)
+        return Results, InclusionList
+    else:
+        return Results
 
-#1) MAPE Remains constant despite transformations, this is purely a mathematical phenomena i believe
-#3) Increasing the base really only makes larger numbers closer to eachother, which doesnt exactly help the regression. Although it may look more precise, when performing a real world prediction it causes a lack of accuracy when dealing with actuals.
+print(EvaluateBases(0.1,[2,10],df,"DATE","CONSUMER CONF INDEX",'power'))
+
+
+#Operations: power,log,lag
