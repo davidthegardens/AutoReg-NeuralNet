@@ -1,0 +1,11 @@
+1. Removal of totals
+2. Addition of "Off work" dummy variable. Encompassing holidays, and eventual weekends off.
+3. Addition of "Vaccinations" dummy variable to indicated the availability of vaccinations.
+4. Addition of "Date Index" variable for easier processing. Date Index = Date(t=i)-Date(t=0)
+5. Trimming beginning 0s
+6. Filling in hospital empty data with 0
+7. Very good R2 between daily totals and daily recovered**0.9
+8. The best transformation for Date Index is **3.7
+9. Daily deaths **0.4 is marginally better than log(dailyDeaths)
+10. log(daily tested) performed best
+11. Daily Active **1.1 gives R2 and improvement by almost 2x

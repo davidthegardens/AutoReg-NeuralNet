@@ -1,0 +1,14 @@
+,Var,Lag,Power
+0,DailyTotals,14.0,0.2
+1,Off work,0.0,0.0
+2,Vaccinations,Requires Further Testing,0.0
+3,Date Index,Requires Further Testing,0.5
+4,DailyRecovered,7.0,0.6
+5,DailyTested,-11.0,-0.1
+6,DailyActive,28.0,-0.1
+7,DailyHospitalized,21.0,0.2
+8,DailyICU,22.0,0.1
+9,DailyVaccinated,-1.0,-0.3
+10,DailyDose1,-29.0,0.5
+11,DailyDose2,26.0,0.9
+12,DailyBooster,14.0,0.1

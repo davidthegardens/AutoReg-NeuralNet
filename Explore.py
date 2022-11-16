@@ -2,19 +2,27 @@
 import pandas as pd
 import seaborn as sn
 import matplotlib.pyplot as plt
-from autoviz.AutoViz_Class import AutoViz_Class
+# from autoviz.AutoViz_Class import AutoViz_Class
 import os
 import numpy as np
 from sklearn.preprocessing import normalize
 import math
 from sklearn.linear_model import LinearRegression
 from datetime import datetime
+import warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning) 
+
+def ReplaceZero(x,base):
+    if x==0:
+        return np.nan
+    else: 
+        return x**base
 
 #set and sort dataframe
-df=pd.read_csv('DATA.csv',sep=',')
-df["DATE"] = pd.to_datetime(df["DATE"])
+df=pd.read_csv('CovidData.csv',sep=',')
+#df["DATE"] = pd.to_datetime(df["DATE"])
 #df['year']=pd.DatetimeIndex(df["DATE"]).year
-df=df.sort_values(by=["DATE"],ascending=True)
+df=df.sort_values(by=["Date Index"],ascending=True)
 cleancopy=df
 # table=pd.pivot_table(df,values='UNRATE(%)',index=['year'],aggfunc=np.mean)
 # df=table.reset_index()
@@ -53,12 +61,12 @@ def UnemploymentPlot():
     plt.show()
 
 #visualization
-def AutoVizTest(ForceGen):
-    if os.path.exists('./Visuals')==False or ForceGen==True:
-        AV = AutoViz_Class()
-        AV.AutoViz(filename='',dfte=df,verbose=1,chart_format='html',depVar='UNRATE(%)',save_plot_dir='./Visuals')
-    else:
-        print('Visuals already exist, and it takes a while to generate them. You can coerce this function by passing in True as the first positional argument')
+# def AutoVizTest(ForceGen):
+#     if os.path.exists('./Visuals')==False or ForceGen==True:
+#         AV = AutoViz_Class()
+#         AV.AutoViz(filename='',dfte=df,verbose=1,chart_format='html',depVar='UNRATE(%)',save_plot_dir='./Visuals')
+#     else:
+#         print('Visuals already exist, and it takes a while to generate them. You can coerce this function by passing in True as the first positional argument')
 
 #AutoVizTest(True)
 
@@ -102,15 +110,13 @@ def DateIndexer(df,xcolname):
     df[xcolname]=DATEIdx
     return df
 
-
 def TestBases(decimals,xrange,operation):
     Relist=[]
     xrange.sort()
     Size=abs(xrange[1]-xrange[0])
     Steps=int(Size/decimals)
     for x in range(0,Steps+1):
-        Relist.append(round((max(xrange)-decimals*x),int(math.log(1/decimals,10))))
-    print(Relist)
+        Relist.append(float(round((max(xrange)-decimals*x),int(math.log(1/decimals,10)))))
     if operation=='log':
         if min(Relist)<0:
             raise Exception("Cannot compute negative log bases, change base range.")
@@ -146,7 +152,6 @@ def Logger(x,base):
         return math.log(x,base)
 
 def Shifter(testdf,ycolname,base,potenshift,operation):
-    
     if operation == 'log':
         if potenshift<0:
             print('shifted')
@@ -154,12 +159,13 @@ def Shifter(testdf,ycolname,base,potenshift,operation):
             testdf['Transformed']=testdf['Transformed']+potenshift
         else:
             testdf['Transformed']=testdf.apply(lambda row: Logger(row[ycolname],base),axis=1)
+            print('did it work')
     elif operation == 'power':
+        testdf['Transformed']=testdf.apply(lambda row: ReplaceZero(row[ycolname],base),axis=1)
         ##somehow this (below) is okay. Sqrt(-1)=Undefined but -1**0.5=-1. I tried using this to cause a math error but instead it just worked, so here we are. I'm not about to code to turn float into fraction, then check odd or even of it's denominator, so this is staying.
-        testdf['Transformed']=testdf[ycolname]**base
     #print(testdf)
     elif operation == 'lag':
-        testdf['Transformed']=testdf[ycolname].shift(base)
+        testdf['Transformed']=testdf[ycolname].shift(int(base))
     testdf.dropna(inplace=True)
     #testdf.fillna(testdf.mean(), inplace=True)
     return testdf
@@ -174,26 +180,91 @@ def EvaluateBases(decimals,rangex,df,xcolname,ycolname,operation):
     nList=[]
     r2List=[]
     for base in TestBaseList:
-        dftemplate=pd.DataFrame({ycolname:df[ycolname],xcolname:df[xcolname]})
-        testdf=Shifter(dftemplate,ycolname,base,potenshift,operation)
-        Mape,n,r2=TestLinearity(testdf,xcolname)
+        if base==0 and operation=='power':
+            Mape=0
+            n=0
+            r2=0
+        else:
+            dftemplate=pd.DataFrame({ycolname:df[ycolname],xcolname:df[xcolname]})
+            testdf=Shifter(dftemplate,ycolname,base,potenshift,operation)
+            Mape,n,r2=TestLinearity(testdf,xcolname)
         MAPEList.append(Mape)
         nList.append(n)
         r2List.append(r2)
         # plt.scatter(testdf[xcolname],testdf['Transformed'])
-        plt.scatter(testdf[xcolname],testdf['Transformed'])
+       # plt.scatter(testdf[xcolname],testdf['Transformed'])
         # plt.scatter(testdf[xcolname],testdf['unlogged forecast'])
-        plt.scatter(testdf[xcolname],testdf['FORECAST'])
+        #plt.scatter(testdf[xcolname],testdf['FORECAST'])
+    if operation=='power':
+        dftemplate=pd.DataFrame({ycolname:df[ycolname],xcolname:df[xcolname]})
+        testdf=Shifter(dftemplate,ycolname,3,potenshift,'log')
+        Mape,n,r2=TestLinearity(testdf,xcolname)
+        MAPEList.append(Mape)
+        nList.append(n)
+        r2List.append(r2)
+        TestBaseList.append('Log(x)')
 
-    Results=pd.DataFrame({operation:TestBaseList,'MAPE':MAPEList,'n':nList,'R2':r2List})
-    InclusionList=None
+    Results=pd.DataFrame({operation:TestBaseList,'MAPE':MAPEList,'n':nList,'R2':r2List,'Transformed Variable':ycolname})
+    #Results.to_csv(str(operation)+str(ycolname)+str(xcolname))
+    #plt.savefig('scat.png')
+    BestRow=Results[Results['R2']==np.max(Results['R2'])]
+    BestTrans=BestRow[operation].tolist()[0]
     if operation=='power':
         Include=Results[Results['R2']==np.max(Results['R2'])]
         BestPower=Include['power'].tolist()[0]
-        if BestPower>1:
-            InclusionList=list(range(1,math.trunc(BestPower)+1))
-            InclusionList.append(BestPower)
-    return Results,Include['R2'].tolist()[3],Include[operation].tolist()[0],InclusionList
+        if BestPower!="Log(x)":
+            if BestPower>1:
+                InclusionList=list(range(1,math.trunc(BestPower)+1))
+                InclusionList.append(BestPower)
+                BestR2=Include['R2'].tolist()[3]
+                BestOp=Include[operation].tolist()[0]
+        else:
+            BestR2=None
+            BestOp=None
+            InclusionList=None
+    else:
+        BestR2=None
+        BestOp=None
+        InclusionList=None
+    
+    #return Results,BestR2,BestOp,InclusionList
+    return BestTrans
+
+#decided transformations
+
+columns=list(df.columns)
+columns.remove('DailyDeaths')
+translist=[]
+for col in columns:
+    print('Lagging '+col)
+    Results=EvaluateBases(1,[-30,30],df,'DailyDeaths',col,'lag')
+
+    if Results not in [-30,30]:
+        translist.append(Results)
+        cleancopy[col].shift(int(Results))
+    else:
+        translist.append('Requires Further Testing')
+
+    print('Completed')
+cleancopy.to_csv("LaggedDataset.csv")
+Transformations=pd.DataFrame({'Var':columns,'Lag':translist})
+
+translist=[]
+for col in columns:
+    print('Powering '+col)
+    df=pd.read_csv("LaggedDataset.csv")
+    Results=EvaluateBases(0.1,[-4,4],df,'DailyDeaths',col,'power')
+    translist.append(Results)
+    if Results=="Log(X)":
+        tempdf=Shifter(df,col,3,np.min(df[col]),'log')
+        df[col]=tempdf['Transformed']
+    elif Results not in [-4,4]:
+        df[col]=df.apply(lambda row: ReplaceZero(row[col],float(Results)),axis=1)
+    print('Completed')
+df.to_csv("PoweredLaggedDataset.csv")
+Transformations['Power']=translist
+Transformations.to_csv('Transformations',sep=',')
+# print(EvaluateBases(0.1,[-4,4],df,'DailyDeaths','DailyActive','power'))
 
 def OptimizationScan(df,xcolname,ycolname):
     r2s=[]
