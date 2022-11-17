@@ -171,11 +171,11 @@ def Shifter(testdf,ycolname,base,potenshift,operation):
     return testdf
 
 def EvaluateBases(decimals,rangex,df,xcolname,ycolname,operation):
-    if df[xcolname].dtypes=='datetime64[ns]':
-        df=DateIndexer(df,xcolname)
+    for x in xcolname:
+        if df[x].dtypes=='datetime64[ns]':
+            df=DateIndexer(df,xcolname)
     TestBaseList=TestBases(decimals,rangex,operation)
     potenshift=np.min(df[ycolname])
-    dftemplate=pd.DataFrame({ycolname:df[ycolname],xcolname:df[xcolname]})
     MAPEList=[]
     nList=[]
     r2List=[]
@@ -185,9 +185,10 @@ def EvaluateBases(decimals,rangex,df,xcolname,ycolname,operation):
             n=0
             r2=0
         else:
-            dftemplate=pd.DataFrame({ycolname:df[ycolname],xcolname:df[xcolname]})
-            testdf=Shifter(dftemplate,ycolname,base,potenshift,operation)
-            Mape,n,r2=TestLinearity(testdf,xcolname)
+        ### left at line below, converting xcolname to list dtype. To complete
+        dftemplate=pd.DataFrame({ycolname:df[ycolname]})
+        for x in xcolname:
+            dftemplate[x]=df[x]
         MAPEList.append(Mape)
         nList.append(n)
         r2List.append(r2)
@@ -230,14 +231,16 @@ def EvaluateBases(decimals,rangex,df,xcolname,ycolname,operation):
     #return Results,BestR2,BestOp,InclusionList
     return BestTrans
 
-#decided transformations
+
+    testdf=Shifter(dftemplate,ycolname,base,potenshift,operation)
+    Mape,n,r2=TestLinearity(testdf,xcolname)
 
 columns=list(df.columns)
 columns.remove('DailyDeaths')
 translist=[]
 for col in columns:
     print('Lagging '+col)
-    Results=EvaluateBases(1,[-30,30],df,'DailyDeaths',col,'lag')
+    Results=EvaluateBases(1,[-30,30],df,'DailyDeaths',[col],'lag')
 
     if Results not in [-30,30]:
         translist.append(Results)
@@ -253,7 +256,7 @@ translist=[]
 for col in columns:
     print('Powering '+col)
     df=pd.read_csv("LaggedDataset.csv")
-    Results=EvaluateBases(0.1,[-4,4],df,'DailyDeaths',col,'power')
+    Results=EvaluateBases(0.1,[-4,4],df,'DailyDeaths',[col],'power')
     translist.append(Results)
     if Results=="Log(X)":
         tempdf=Shifter(df,col,3,np.min(df[col]),'log')
@@ -266,29 +269,6 @@ Transformations['Power']=translist
 Transformations.to_csv('Transformations',sep=',')
 # print(EvaluateBases(0.1,[-4,4],df,'DailyDeaths','DailyActive','power'))
 
-def OptimizationScan(df,xcolname,ycolname):
-    r2s=[]
-    r2snames=['lag','power','power','log']
-    BestChanges=[]
-    Results,r2,BestChange=EvaluateBases(1,[-100,100],df,xcolname,ycolname,'lag')
-    r2s.append(r2)
-    BestChange.append(BestChange)
-    Results,rootr2,BestChange=EvaluateBases(0.1,[-1,1],df,xcolname,ycolname,'power')
-    r2s.append(rootr2)
-    BestChange.append(BestChange)
-    Results,expr2,BestChange=EvaluateBases(1,[-20,20],df,xcolname,ycolname,'power')
-    r2s.append(expr2)
-    BestChange.append(BestChange)
-    Results,logr2,BestChange=EvaluateBases(1,[2,2],df,xcolname,ycolname,'log')
-    tempdf=cleancopy[xcolname,ycolname]
-    a,b,regr2=TestLinearity(tempdf,xcolname)
-    BestChange.append(BestChange)
-    if logr2>regr2:
-        r2s.append(logr2)
-    else:
-        r2s.append(0)
-    Choices=pd.DataFrame({'Operation':r2snames,'R2':r2s,'Best Change':BestChanges})
-    Choice=Choices[Choices['R2']==np.max(Choices['R2'])]
 
 
 
