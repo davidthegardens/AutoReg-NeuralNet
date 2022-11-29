@@ -187,8 +187,8 @@ def EvaluateBases(decimals,rangex,df,xcolname,ycolname,operation):
         else:
         ### left at line below, converting xcolname to list dtype. To complete
         dftemplate=pd.DataFrame({ycolname:df[ycolname]})
-        for x in xcolname:
-            dftemplate[x]=df[x]
+            for x in xcolname:
+                dftemplate[x]=df[x]
         MAPEList.append(Mape)
         nList.append(n)
         r2List.append(r2)
