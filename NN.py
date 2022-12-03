@@ -112,11 +112,11 @@ def PrepareData(Trainpct,df,ycolname,forcedsize):
     return X_train, X_test, y_train, y_test
 
 def GetStructure():
-    Layers=random.randrange(4,10)
+    Layers=random.randrange(2,8)
     paramx=[]
     paramstr=[]
     for i in range(Layers+1):
-        rand=random.randrange(5,100)
+        rand=random.randrange(3,60)
         paramx.append(rand)
         paramstr.append(str(rand))
     structure=paramx
@@ -136,7 +136,7 @@ def fix(fixthis):
 df = pd.read_csv('C:\\477\\Team Project\\bixidata\\BixiData.csv')
 df=df.drop(columns=['Timestamp'])
 df=DatetoNumeric(df,'Date',True)
-df=df[['Date','Day of Week','Hour','Count of Trips']]
+df=df[['Date','Year','Month','Day of Week','Hour','Count of Trips']]
 # df=df.head(100)
 
 # df['Lagged y k=1']=df['Count of Trips'].shift(1)
@@ -164,14 +164,14 @@ def NNAR(df):
     for i in range(1000):
         recordmape=100
         structure,namecomp=GetStructure()
-        out1,out2,hash=netwrapper(fix(X_train),fix(fix(y_train)),fix(X_test),structure,autoregress=True,epochs=400,learning_rate=0.1,dynamic_learning=False,verbose=True,early_modelling=True,location="C:/477/Team Project/bixidata/NNoutput/NNARparameters",ImprovementThreshold=0.005)
+        out1,out2,hash=netwrapper(fix(X_train),fix(fix(y_train)),fix(X_test),structure,autoregress=True,epochs=1000,learning_rate=0.1,dynamic_learning=False,verbose=True,early_modelling=True,location="C:/477/Team Project/bixidata/NNoutput/NNARparameters",ImprovementThreshold=-0.1)
         out=np.append(out1,out2)
         #print(out.shape)
         df['Prediction']=np.reshape(out,out.shape[0])
         df=Decoder(df,DecodeTable,'Count of Trips',False)
         df['APE']=abs(df['Count of Trips']-df['Prediction'])/df['Count of Trips']
         df['Prediction'].replace([np.inf, -np.inf],np.nan, inplace=True)
-        mape=round(np.mean(df['APE'].tail(5160))*100)
+        mape=round(np.nanmean(df['APE'].tail(5160))*100)
         print(mape)
         if mape<recordmape:
             recordmape=mape
