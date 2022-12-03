@@ -72,7 +72,8 @@ class Network:
 
     # train the network
     def fit(self, x_train, y_train, epochs, learning_rate,autoregress,verbose,dynamic_learning,location,structure,ImprovementThreshold):
-        fiveMA=[]
+        errors=[]
+        change=[]
         hash=str(uuid.uuid4().hex)
         if verbose==True:
             print('This session will be saved as '+location+hash+'.pkl ')
@@ -138,18 +139,22 @@ class Network:
                 if verbose==True:
                     print('New best model overwrote the prior: '+location+hash+'.pkl ')
 
-            if verbose==True:
-                print('epoch %d/%d   error=%f' % (i+1, epochs, err))
-        
-            if len(fiveMA)<5:
-                if len(fiveMA)==0:
-                    fiveMA.append(1)
-                else:
-                    fiveMA.append(err/fiveMA[len(fiveMA)-1])
-            else:
-                fiveMA=[fiveMA[1],fiveMA[2],fiveMA[3],fiveMA[4],err/fiveMA[4]]
+            errors.append(err)
+            if i>0:
+                change.append(err/errors[i-1])
             
-            if ((1-np.nanmean(fiveMA))>=ImprovementThreshold) and (len(fiveMA)>5):
-                print('Training terminated due to ineffective learning.')
-                break
+
+            if i!=0:
+                masize=np.minimum(i,5)
+                fiveMAchange=1-np.nanmean(change[-masize:])
+            else:
+                fiveMAchange=1
+            
+            if i>=3:
+                if (fiveMAchange<=ImprovementThreshold and i>10) or change[-3:].count(1.0)==3:
+                    print('Training terminated due to ineffective learning. 5MA=%f' % (fiveMAchange))
+                    break
+
+            if verbose==True:
+                print('epoch %d/%d   error=%f    change=%f     change 5 epoch MA=%f' % (i+1, epochs, err,err/errors[i-1],fiveMAchange))
         return bestmodel,hash
