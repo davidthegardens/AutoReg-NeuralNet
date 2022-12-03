@@ -14,6 +14,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 from math import sqrt
 from sklearn.metrics import r2_score
+from NNAR import netwrapper,predict_from_load
 
 def Role(x,TrainSize):
     if x<=TrainSize:
@@ -71,7 +72,7 @@ def Encoder(df,squish):
     DecodeTable=[[],[],[]]
     for colname in tempdf:
         #purely objectively, I like range [-5,5]
-        df,currentmin,currentmax=MinMaxScaler(df,colname,-100,100)
+        df,currentmin,currentmax=MinMaxScaler(df,colname,-1,1)
         DecodeTable[0].append(colname)
         DecodeTable[1].append(currentmin)
         DecodeTable[2].append(currentmax)
@@ -110,55 +111,84 @@ def PrepareData(Trainpct,df,ycolname,forcedsize):
     y_test=dfTest[ycolname].values
     return X_train, X_test, y_train, y_test
 
-Layers=random.randrange(1,10)
-paramx=[]
-paramstr=[]
-for i in range(Layers+1):
-    rand=random.randrange(5,104)
-    paramx.append(rand)
-    paramstr.append(str(rand))
+def GetStructure():
+    Layers=random.randrange(1,10)
+    paramx=[]
+    paramstr=[]
+    for i in range(Layers+1):
+        rand=random.randrange(5,150)
+        paramx.append(rand)
+        paramstr.append(str(rand))
+    structure=tuple(paramx)
+    namecomp="_".join(paramstr)
+    print(structure)
+    return structure,namecomp
 
-structure=tuple(paramx)
-print(structure)
-namecomp="_".join(paramstr)
+def fix(fixthis):
+    lister=[]
+    for i in range(len(fixthis)):
+        lister.append([fixthis[i]])
+    return np.array(lister,dtype=float)
+
+
+
+
 df = pd.read_csv('C:\\477\\Team Project\\bixidata\\BixiData.csv')
 df=df.drop(columns=['Timestamp'])
 df=DatetoNumeric(df,'Date',True)
-df['Lagged y k=1']=df['Count of Trips'].shift(1)
-df['Lagged y k=1']=df['Lagged y k=1'].fillna(0)
-df['Lagged y k=2']=df['Count of Trips'].shift(2)
-df['Lagged y k=2']=df['Lagged y k=2'].fillna(0)
-df['index'] = range(1, len(df) + 1)
-# df,DecodeTable=Encoder(df,False)
+df=df[['Date','Day of Week','Hour','Count of Trips']]
+# df=df.head(100)
+
+# df['Lagged y k=1']=df['Count of Trips'].shift(1)
+# df['Lagged y k=1']=df['Lagged y k=1'].fillna(0)
+# df['Lagged y k=2']=df['Count of Trips'].shift(2)
+# df['Lagged y k=2']=df['Lagged y k=2'].fillna(0)
+#df['index'] = range(1, len(df) + 1)
+df,DecodeTable=Encoder(df,False)
 X_train, X_test, y_train, y_test=PrepareData(0.8,df,'Count of Trips',14377)
 
-mapelist=[0.45]
-for i in range(1000):
+# out1=predict_from_load(fix(X_train),True,'C:\\477\\Team Project\\bixidata\\NNoutput\\NNARparameters2eaea19db7b748569ac68d7cc78448e3.pkl',[80,20,40,40,18],1)
+# out2=predict_from_load(fix(X_test),True,'C:\\477\\Team Project\\bixidata\\NNoutput\\NNARparameters2eaea19db7b748569ac68d7cc78448e3.pkl',[80,20,40,40,18],1)
 
-    mlp = MLPRegressor(hidden_layer_sizes=structure, activation='relu', solver='adam',shuffle=False, max_iter=500000,learning_rate='invscaling',early_stopping=True)
-    mlp.fit(X_train,y_train)
+out1,out2=netwrapper(fix(X_train),fix(fix(y_train)),fix(X_test),[80,20,40,40,18],autoregress=True,epochs=1000,learning_rate=0.1,dynamic_learning=False,verbose=True,early_modelling=True,location="C:\\477\\Team Project\\bixidata\\NNoutput\\NNARparameters")
+out=np.append(out1,out2)
+#print(out.shape)
+df['Prediction']=np.reshape(out,out.shape[0])
+df=Decoder(df,DecodeTable,'Count of Trips',False)
+df['APE']=abs(df['Count of Trips']-df['Prediction'])/df['Count of Trips']
+df.replace([np.inf, -np.inf], 0, inplace=True)
+mape=round(np.mean(df['APE'].tail(5160))*100)
+print(mape)
+df.to_csv('C:\\477\\Team Project\\bixidata\\NNoutput\\NNAROutput'+str(mape)+'.csv')
+# mapelist=[0.8]
+# for i in range(1000):
+#     structure,namecomp=GetStructure()
+#     # namecomp=[8,32,28,59,82,22,87,86,29]
+#     # structure=(8,32,28,59,82,22,87,86,29)
+#     mlp = MLPRegressor(hidden_layer_sizes=structure, activation='relu', solver='adam',shuffle=True, max_iter=500000,learning_rate='invscaling',early_stopping=True,)
+#     mlp.fit(X_train,y_train)
     
 
-    predict_train = mlp.predict(X_train)
-    predict_test = mlp.predict(X_test)
+#     predict_train = mlp.predict(X_train)
+#     predict_test = mlp.predict(X_test)
 
-    fullprediction=np.append(predict_train,predict_test)
-    df['Prediction']=fullprediction
+#     fullprediction=np.append(predict_train,predict_test)
+#     df['Prediction']=fullprediction
 
-    # df=Decoder(df,DecodeTable,'Count of Trips',False)
-    df['APE']=abs(df['Count of Trips']-df['Prediction'])/df['Count of Trips']
-    # df['Role']=Role(df['index'],14377)
-    Mape=np.mean(df['APE'].tail(len(df)-14377))
-    print(Mape)
+#     # df=Decoder(df,DecodeTable,'Count of Trips',False)
+#     df['APE']=abs(df['Count of Trips']-df['Prediction'])/df['Count of Trips']
+#     # df['Role']=Role(df['index'],14377)
+#     Mape=np.mean(df['APE'].tail(len(df)-14377))
+#     print(Mape)
 
-    if Mape<min(mapelist):
-        mapelist.append(Mape)
-        modeloutp=pd.DataFrame({'Weight':mlp._best_coefs,'Bias':mlp._best_intercepts})
-        print(df)
-        filename=namecomp+'_'+str(round(Mape*100))+'.csv'
-        modeloutp.to_csv('C:\\477\\Team Project\\bixidata\\NNoutput\\NNweights'+filename)
-        df.to_csv('C:\\477\\Team Project\\bixidata\\NNoutput\\NN'+filename)
-    else: print('bad model')
+#     if Mape<min(mapelist):
+#         mapelist.append(Mape)
+#         modeloutp=pd.DataFrame({'Weight':mlp._best_coefs,'Bias':mlp._best_intercepts})
+#         print(df)
+#         filename=namecomp+'_'+str(round(Mape*100))+'.csv'
+#         modeloutp.to_csv('C:\\477\\Team Project\\bixidata\\NNoutput\\NolagNNweights'+filename)
+#         df.to_csv('C:\\477\\Team Project\\bixidata\\NNoutput\\NolagNN'+filename)
+#     else: print('bad model')
         
 # print(Decoder(df,DecodeTable,'Count of Trips'))
 # print(confusion_matrix(y_train,predict_train))
@@ -175,3 +205,4 @@ for i in range(1000):
 # dfdata=df.describe().transpose()
 # dfdata['Upper']=dfdata['mean']+2*dfdata['std']
 # dfdata['Lower']=dfdata['mean']-2*dfdata['std']
+
