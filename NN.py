@@ -160,10 +160,10 @@ def predictfromload(filename):
     print(mape)
     df.to_csv('C:\\477\\Team Project\\bixidata\\NNoutput\\NNAROutput_'+namecomp+'_'+hash+'_'+str(mape)+'.csv')
 
-def NNAR():
+def NNAR(df):
     for i in range(1000):
         structure,namecomp=GetStructure()
-        out1,out2,hash=netwrapper(fix(X_train),fix(fix(y_train)),fix(X_test),structure,autoregress=True,epochs=400,learning_rate=0.1,dynamic_learning=False,verbose=True,early_modelling=True,location="C:/477/Team Project/bixidata/NNoutput/NNARparameters")
+        out1,out2,hash=netwrapper(fix(X_train),fix(fix(y_train)),fix(X_test),structure,autoregress=True,epochs=400,learning_rate=0.1,dynamic_learning=False,verbose=True,early_modelling=True,location="C:/477/Team Project/bixidata/NNoutput/NNARparameters",ImprovementThreshold=0.05)
         out=np.append(out1,out2)
         #print(out.shape)
         df['Prediction']=np.reshape(out,out.shape[0])
@@ -174,7 +174,7 @@ def NNAR():
         print(mape)
         df.to_csv('C:\\477\\Team Project\\bixidata\\NNoutput\\NNAROutput_'+namecomp+'_'+hash+'_'+str(mape)+'.csv')
 
-NNAR()
+NNAR(df)
 # mapelist=[0.8]
 # for i in range(1000):
 #     structure,namecomp=GetStructure()

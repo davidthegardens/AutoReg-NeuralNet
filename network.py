@@ -71,8 +71,8 @@ class Network:
         return result
 
     # train the network
-    def fit(self, x_train, y_train, epochs, learning_rate,autoregress,verbose,dynamic_learning,location,structure):
-
+    def fit(self, x_train, y_train, epochs, learning_rate,autoregress,verbose,dynamic_learning,location,structure,ImprovementThreshold):
+        fiveMA=[]
         hash=str(uuid.uuid4().hex)
         if verbose==True:
             print('This session will be saved as '+location+hash+'.pkl ')
@@ -140,4 +140,16 @@ class Network:
 
             if verbose==True:
                 print('epoch %d/%d   error=%f' % (i+1, epochs, err))
+        
+            if len(fiveMA)<5:
+                if len(fiveMA)==0:
+                    fiveMA.append(1)
+                else:
+                    fiveMA.append(err/fiveMA[len(fiveMA)-1])
+            else:
+                fiveMA=[fiveMA[1],fiveMA[2],fiveMA[3],fiveMA[4],err/fiveMA[4]]
+            
+            if ((1-np.nanmean(fiveMA))>=ImprovementThreshold) and (len(fiveMA)>5):
+                print('Training terminated due to ineffective learning.')
+                break
         return bestmodel,hash

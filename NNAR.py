@@ -31,7 +31,7 @@ def initializemodel(structure,inputsize,outputsize,activation,loss):
 
     return net
 
-def netwrapper(x_train,y_train,predictioninput,structure,autoregress,epochs,learning_rate,verbose,dynamic_learning,early_modelling,location):
+def netwrapper(x_train,y_train,predictioninput,structure,autoregress,epochs,learning_rate,verbose,dynamic_learning,early_modelling,location,ImprovementThreshold):
 
     copy_x_train=x_train
     #add empty input
@@ -43,7 +43,7 @@ def netwrapper(x_train,y_train,predictioninput,structure,autoregress,epochs,lear
 
     net=initializemodel(structure,inputsize,outputsize,tanh,mse)
 
-    optimal_model,hash=net.fit(x_train.copy(), y_train, epochs=epochs, learning_rate=learning_rate,autoregress=autoregress,verbose=verbose,dynamic_learning=dynamic_learning,location=location,structure=structure)
+    optimal_model,hash=net.fit(x_train.copy(), y_train, epochs=epochs, learning_rate=learning_rate,autoregress=autoregress,verbose=verbose,dynamic_learning=dynamic_learning,location=location,structure=structure,ImprovementThreshold=ImprovementThreshold)
     
     if early_modelling==True:
         out1=net.predict(copy_x_train,autoregress=autoregress,optimal_modelling=True,optimal_model=optimal_model)
