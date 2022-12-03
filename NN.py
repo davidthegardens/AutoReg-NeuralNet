@@ -112,14 +112,14 @@ def PrepareData(Trainpct,df,ycolname,forcedsize):
     return X_train, X_test, y_train, y_test
 
 def GetStructure():
-    Layers=random.randrange(1,10)
+    Layers=random.randrange(4,10)
     paramx=[]
     paramstr=[]
     for i in range(Layers+1):
-        rand=random.randrange(5,150)
+        rand=random.randrange(5,100)
         paramx.append(rand)
         paramstr.append(str(rand))
-    structure=tuple(paramx)
+    structure=paramx
     namecomp="_".join(paramstr)
     print(structure)
     return structure,namecomp
@@ -147,19 +147,34 @@ df=df[['Date','Day of Week','Hour','Count of Trips']]
 df,DecodeTable=Encoder(df,False)
 X_train, X_test, y_train, y_test=PrepareData(0.8,df,'Count of Trips',14377)
 
-# out1=predict_from_load(fix(X_train),True,'C:\\477\\Team Project\\bixidata\\NNoutput\\NNARparameters2eaea19db7b748569ac68d7cc78448e3.pkl',[80,20,40,40,18],1)
-# out2=predict_from_load(fix(X_test),True,'C:\\477\\Team Project\\bixidata\\NNoutput\\NNARparameters2eaea19db7b748569ac68d7cc78448e3.pkl',[80,20,40,40,18],1)
+def predictfromload(filename):
+    hash='aaa'
+    out1,namecomp=predict_from_load(fix(X_train),True,filename,1)
+    out2,namecomp=predict_from_load(fix(X_test),True,filename,1)
+    out=np.append(out1,out2)
+    df['Prediction']=np.reshape(out,out.shape[0])
+    df=Decoder(df,DecodeTable,'Count of Trips',False)
+    df['APE']=abs(df['Count of Trips']-df['Prediction'])/df['Count of Trips']
+    df['Prediction'].replace([np.inf, -np.inf],np.nan, inplace=True)
+    mape=round(np.nanmean(df['APE'].tail(5160))*100)
+    print(mape)
+    df.to_csv('C:\\477\\Team Project\\bixidata\\NNoutput\\NNAROutput_'+namecomp+'_'+hash+'_'+str(mape)+'.csv')
 
-out1,out2=netwrapper(fix(X_train),fix(fix(y_train)),fix(X_test),[80,20,40,40,18],autoregress=True,epochs=1000,learning_rate=0.1,dynamic_learning=False,verbose=True,early_modelling=True,location="C:\\477\\Team Project\\bixidata\\NNoutput\\NNARparameters")
-out=np.append(out1,out2)
-#print(out.shape)
-df['Prediction']=np.reshape(out,out.shape[0])
-df=Decoder(df,DecodeTable,'Count of Trips',False)
-df['APE']=abs(df['Count of Trips']-df['Prediction'])/df['Count of Trips']
-df.replace([np.inf, -np.inf], 0, inplace=True)
-mape=round(np.mean(df['APE'].tail(5160))*100)
-print(mape)
-df.to_csv('C:\\477\\Team Project\\bixidata\\NNoutput\\NNAROutput'+str(mape)+'.csv')
+def NNAR():
+    for i in range(1000):
+        structure,namecomp=GetStructure()
+        out1,out2,hash=netwrapper(fix(X_train),fix(fix(y_train)),fix(X_test),structure,autoregress=True,epochs=400,learning_rate=0.1,dynamic_learning=False,verbose=True,early_modelling=True,location="C:/477/Team Project/bixidata/NNoutput/NNARparameters")
+        out=np.append(out1,out2)
+        #print(out.shape)
+        df['Prediction']=np.reshape(out,out.shape[0])
+        df=Decoder(df,DecodeTable,'Count of Trips',False)
+        df['APE']=abs(df['Count of Trips']-df['Prediction'])/df['Count of Trips']
+        df['Prediction'].replace([np.inf, -np.inf],np.nan, inplace=True)
+        mape=round(np.mean(df['APE'].tail(5160))*100)
+        print(mape)
+        df.to_csv('C:\\477\\Team Project\\bixidata\\NNoutput\\NNAROutput_'+namecomp+'_'+hash+'_'+str(mape)+'.csv')
+
+NNAR()
 # mapelist=[0.8]
 # for i in range(1000):
 #     structure,namecomp=GetStructure()

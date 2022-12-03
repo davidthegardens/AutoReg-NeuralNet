@@ -36,7 +36,7 @@ class Network:
         self.loss_prime = loss_prime
 
     # predict output for given input
-    def predict(self, input_data,autoregress,optimal_model):
+    def predict(self, input_data,autoregress,optimal_modelling,optimal_model):
         # sample dimension first
         if autoregress==True:
             input_data=prepforautoregress(input_data)
@@ -57,20 +57,21 @@ class Network:
             
             counter=0
             for layer in self.layers:
-                if optimal_model!=None:
+                if optimal_modelling!=False:
                     if layer.what()!='Activation':
-                        output=layer.forward_prop_from_load(output,optimal_model[counter][0][0],optimal_model[counter][0][1])
+                        output=layer.forward_prop_from_load(output,optimal_model[0][0][counter][0][0],optimal_model[0][0][counter][0][1])
                         counter=counter+1
+                    else:
+                        output = layer.forward_propagation(output)
                 else:
                     output = layer.forward_propagation(output)
 
             prior=output
             result.append(output)
-
         return result
 
     # train the network
-    def fit(self, x_train, y_train, epochs, learning_rate,autoregress,verbose,dynamic_learning,location):
+    def fit(self, x_train, y_train, epochs, learning_rate,autoregress,verbose,dynamic_learning,location,structure):
 
         hash=str(uuid.uuid4().hex)
         if verbose==True:
@@ -132,10 +133,11 @@ class Network:
                 for layer in self.layers:
                     if layer.export()!='Activation':
                         bestmodel.append([layer.export()])
+                bestmodel=[[bestmodel],structure]
                 self.export_best_model(bestmodel,location,hash)
                 if verbose==True:
                     print('New best model overwrote the prior: '+location+hash+'.pkl ')
 
             if verbose==True:
                 print('epoch %d/%d   error=%f' % (i+1, epochs, err))
-        return bestmodel
+        return bestmodel,hash

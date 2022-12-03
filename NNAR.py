@@ -33,6 +33,7 @@ def initializemodel(structure,inputsize,outputsize,activation,loss):
 
 def netwrapper(x_train,y_train,predictioninput,structure,autoregress,epochs,learning_rate,verbose,dynamic_learning,early_modelling,location):
 
+    copy_x_train=x_train
     #add empty input
     if autoregress==True:
         x_train=prepforautoregress(x_train)
@@ -42,22 +43,28 @@ def netwrapper(x_train,y_train,predictioninput,structure,autoregress,epochs,lear
 
     net=initializemodel(structure,inputsize,outputsize,tanh,mse)
 
-    optimal_model=net.fit(x_train.copy(), y_train, epochs=epochs, learning_rate=learning_rate,autoregress=autoregress,verbose=verbose,dynamic_learning=dynamic_learning,location=location)
+    optimal_model,hash=net.fit(x_train.copy(), y_train, epochs=epochs, learning_rate=learning_rate,autoregress=autoregress,verbose=verbose,dynamic_learning=dynamic_learning,location=location,structure=structure)
     
     if early_modelling==True:
-        out1=net.predict(predictioninput,autoregress=autoregress,optimal_model=optimal_model)
-        out2 = net.predict(predictioninput,autoregress=autoregress,optimal_model=optimal_model)
+        out1=net.predict(copy_x_train,autoregress=autoregress,optimal_modelling=True,optimal_model=optimal_model)
+        out2 = net.predict(predictioninput,autoregress=autoregress,optimal_modelling=True,optimal_model=optimal_model)
     else:
-        out1=net.predict(predictioninput,autoregress=autoregress,optimal_model=None)
+        out1=net.predict(copy_x_train,autoregress=autoregress,optimal_model=None)
         out2 = net.predict(predictioninput,autoregress=autoregress,optimal_model=None)
     
-    return np.array(out1,dtype=float),np.array(out2,dtype=float)
+    return np.array(out1,dtype=float),np.array(out2,dtype=float),hash
 
-def predict_from_load(predictioninput,autoregress,file,structure,outputsize):
-    net=initializemodel(structure,predictioninput.shape[2]+1,outputsize,tanh,mse)
+def predict_from_load(predictioninput,autoregress,file,outputsize):
     optimal_model=np.load(file,allow_pickle=True)
-    out=net.predict(predictioninput,autoregress=autoregress,optimal_model=optimal_model)
-    return np.array(out,dtype=float)
+    structure=optimal_model[1]
+    easystructure=[]
+    for i in structure:
+        easystructure.append(str(i))
+    easystructure="_".join(easystructure)
+    optimal_model=optimal_model
+    net=initializemodel(structure,predictioninput.shape[2]+1,outputsize,tanh,mse)
+    out=net.predict(predictioninput,autoregress=autoregress,optimal_modelling=True,optimal_model=optimal_model)
+    return np.array(out,dtype=float),easystructure
 
 
 #net=netwrapper(x_train,y_train,x_train,[6,8,7],autoregress=True,epochs=10000,learning_rate=0.1,dynamic_learning=False,verbose=True)
