@@ -151,7 +151,7 @@ class Network:
                 fiveMAchange=1
             
             if i>=3:
-                if (fiveMAchange<=ImprovementThreshold and i>10) or change[-3:].count(1.0)==3:
+                if ((fiveMAchange<=ImprovementThreshold and i>10) and (change[len(change)-1]>=1)) or np.round(change[-3:],6).tolist().count(1.000000)==3:
                     print('Training terminated due to ineffective learning. 5MA=%f' % (fiveMAchange))
                     break
 

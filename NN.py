@@ -162,6 +162,7 @@ def predictfromload(filename):
 
 def NNAR(df):
     for i in range(1000):
+        recordmape=100
         structure,namecomp=GetStructure()
         out1,out2,hash=netwrapper(fix(X_train),fix(fix(y_train)),fix(X_test),structure,autoregress=True,epochs=400,learning_rate=0.1,dynamic_learning=False,verbose=True,early_modelling=True,location="C:/477/Team Project/bixidata/NNoutput/NNARparameters",ImprovementThreshold=0.005)
         out=np.append(out1,out2)
@@ -172,7 +173,9 @@ def NNAR(df):
         df['Prediction'].replace([np.inf, -np.inf],np.nan, inplace=True)
         mape=round(np.mean(df['APE'].tail(5160))*100)
         print(mape)
-        df.to_csv('C:\\477\\Team Project\\bixidata\\NNoutput\\NNAROutput_'+namecomp+'_'+hash+'_'+str(mape)+'.csv')
+        if mape<recordmape:
+            recordmape=mape
+            df.to_csv('C:\\477\\Team Project\\bixidata\\NNoutput\\NNAROutput_'+namecomp+'_'+hash+'_'+str(mape)+'.csv')
 
 NNAR(df)
 # mapelist=[0.8]
