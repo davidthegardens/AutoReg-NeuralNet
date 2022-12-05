@@ -1,14 +1,23 @@
 from layer import Layer
 import numpy as np
 import pandas as pd
+from math import sqrt
 
 # inherit from base class Layer
 class FCLayer(Layer):
     # input_size = number of input neurons
     # output_size = number of output neurons
-    def __init__(self, input_size, output_size):
-        self.weights = np.random.rand(input_size, output_size) - 0.5
-        self.bias = np.random.rand(1, output_size) - 0.5
+    def __init__(self, input_size,output_size,activator):
+        
+        if activator=='ReLu':
+            std=sqrt(2.0/input_size)
+            self.weights=np.random.randn(input_size, output_size)*std
+            self.bias=np.random.randn(1,output_size)*std
+        
+        elif activator=='tanh' or activator=='sigmoid':
+            std=sqrt(6.0)/sqrt(input_size+output_size)
+            self.weights = np.random.rand(input_size,output_size)*(2*std)-std
+            self.bias = np.random.rand(1,output_size)*(2*std)-std
 
     # returns output for a given input
     def forward_propagation(self, input_data):

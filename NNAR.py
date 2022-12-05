@@ -14,16 +14,22 @@ def initializemodel(structure,inputsize,outputsize,activation,loss):
     
     net = Network()
     if activation==tanh:
+        activator='tanh'
         primeactive=tanh_prime
+    elif activation==ReLu:
+        activator='ReLu'
+        primeactive=ReLu_prime
 
     if loss==mse:
         primeloss=mse_prime
-    for i in range(len(structure)):
-        net.add(FCLayer(inputsize, structure[i]))
+    
+    for i in range(len(structure)-1):
+        net.add(FCLayer(inputsize, structure[i],activator))
         net.add(ActivationLayer(activation, primeactive))
         inputsize=structure[i]
 
-    net.add(FCLayer(inputsize, outputsize))
+
+    net.add(FCLayer(inputsize, outputsize,activator))
     net.add(ActivationLayer(activation, primeactive))
 
     # train
@@ -43,16 +49,18 @@ def netwrapper(x_train,y_train,predictioninput,structure,autoregress,epochs,lear
 
     net=initializemodel(structure,inputsize,outputsize,tanh,mse)
 
-    optimal_model,hash=net.fit(x_train.copy(), y_train, epochs=epochs, learning_rate=learning_rate,autoregress=autoregress,verbose=verbose,dynamic_learning=dynamic_learning,location=location,structure=structure,ImprovementThreshold=ImprovementThreshold)
-    
-    if early_modelling==True:
-        out1=net.predict(copy_x_train,autoregress=autoregress,optimal_modelling=True,optimal_model=optimal_model)
-        out2 = net.predict(predictioninput,autoregress=autoregress,optimal_modelling=True,optimal_model=optimal_model)
+    optimal_model,hash=net.fit(x_train, y_train, epochs=epochs, learning_rate=learning_rate,autoregress=autoregress,verbose=verbose,dynamic_learning=dynamic_learning,location=location,structure=structure,ImprovementThreshold=ImprovementThreshold)
+    if optimal_model!=None:
+        if early_modelling==True:
+            out1=net.predict(copy_x_train,autoregress=autoregress,optimal_modelling=True,optimal_model=optimal_model)
+            out2 = net.predict(predictioninput,autoregress=autoregress,optimal_modelling=True,optimal_model=optimal_model)
+        else:
+            out1=net.predict(copy_x_train,autoregress=autoregress,optimal_modelling=False,optimal_model=None)
+            out2 = net.predict(predictioninput,autoregress=autoregress,optimal_modelling=False,optimal_model=None)
+        
+        return np.array(out1,dtype=float),np.array(out2,dtype=float),hash
     else:
-        out1=net.predict(copy_x_train,autoregress=autoregress,optimal_model=None)
-        out2 = net.predict(predictioninput,autoregress=autoregress,optimal_model=None)
-    
-    return np.array(out1,dtype=float),np.array(out2,dtype=float),hash
+        return 'Nothing',None,None
 
 def predict_from_load(predictioninput,autoregress,file,outputsize):
     optimal_model=np.load(file,allow_pickle=True)
@@ -62,7 +70,7 @@ def predict_from_load(predictioninput,autoregress,file,outputsize):
         easystructure.append(str(i))
     easystructure="_".join(easystructure)
     optimal_model=optimal_model
-    net=initializemodel(structure,predictioninput.shape[2]+1,outputsize,tanh,mse)
+    net=initializemodel(structure,predictioninput.shape[2]+1,outputsize,ReLu,mse)
     out=net.predict(predictioninput,autoregress=autoregress,optimal_modelling=True,optimal_model=optimal_model)
     return np.array(out,dtype=float),easystructure
 

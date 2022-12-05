@@ -16,6 +16,8 @@ from math import sqrt
 from sklearn.metrics import r2_score
 from NNAR import netwrapper,predict_from_load
 
+
+
 def Role(x,TrainSize):
     if x<=TrainSize:
         val="TRAIN"
@@ -112,11 +114,11 @@ def PrepareData(Trainpct,df,ycolname,forcedsize):
     return X_train, X_test, y_train, y_test
 
 def GetStructure():
-    Layers=random.randrange(2,8)
+    Layers=random.randrange(2,10)
     paramx=[]
     paramstr=[]
     for i in range(Layers+1):
-        rand=random.randrange(3,60)
+        rand=random.randrange(3,50)
         paramx.append(rand)
         paramstr.append(str(rand))
     structure=paramx
@@ -131,12 +133,11 @@ def fix(fixthis):
     return np.array(lister,dtype=float)
 
 
-
-
-df = pd.read_csv('C:\\477\\Team Project\\bixidata\\BixiData.csv')
-df=df.drop(columns=['Timestamp'])
-df=DatetoNumeric(df,'Date',True)
-df=df[['Date','Year','Month','Day of Week','Hour','Count of Trips']]
+df = pd.read_csv('C:\\477\\Team Project\\bixidata\\SeasonalityRegression.csv')
+#df=df[['Date','Year','Month','Day of Week','Hour','Count of Trips']]
+#df=df.drop(columns=['Timestamp'])
+#df=DatetoNumeric(df,'Date',True)
+#df=df[['Date','Year','Month','Day of Week','Hour','Count of Trips']]
 # df=df.head(100)
 
 # df['Lagged y k=1']=df['Count of Trips'].shift(1)
@@ -147,32 +148,45 @@ df=df[['Date','Year','Month','Day of Week','Hour','Count of Trips']]
 df,DecodeTable=Encoder(df,False)
 X_train, X_test, y_train, y_test=PrepareData(0.8,df,'Count of Trips',14377)
 
-def predictfromload(filename):
+def predictfromload(df,filename):
     hash='aaa'
     out1,namecomp=predict_from_load(fix(X_train),True,filename,1)
     out2,namecomp=predict_from_load(fix(X_test),True,filename,1)
     out=np.append(out1,out2)
     df['Prediction']=np.reshape(out,out.shape[0])
     df=Decoder(df,DecodeTable,'Count of Trips',False)
+    df['SE']=(df['Count of Trips']-df['Prediction'])**2
     df['APE']=abs(df['Count of Trips']-df['Prediction'])/df['Count of Trips']
     df['Prediction'].replace([np.inf, -np.inf],np.nan, inplace=True)
     mape=round(np.nanmean(df['APE'].tail(5160))*100)
-    print('MAPE=',mape)
+    mse=round(np.nanmean(df['SE'].tail(5160))*100)
+    print('MAPE=',mape,'MSE=',mse)
     df.to_csv('C:\\477\\Team Project\\bixidata\\NNoutput\\NNAROutput_'+namecomp+'_'+hash+'_'+str(mape)+'.csv')
 
+#predictfromload(df,'C:/477/Team Project/bixidata/NNoutput/NNARparameters0952d5b640d2433ca7074ebadd837e3d.pkl')
+####best so far C:/477/Team Project/bixidata/NNoutput/NNARparameters5edb2084be3b4681bdf5a75ac3b087b6.pkl
 def NNAR(df):
+    recordmape=69
     for i in range(1000):
-        recordmape=100
         structure,namecomp=GetStructure()
-        out1,out2,hash=netwrapper(fix(X_train),fix(fix(y_train)),fix(X_test),structure,autoregress=True,epochs=1000,learning_rate=0.1,dynamic_learning=False,verbose=True,early_modelling=True,location="C:/477/Team Project/bixidata/NNoutput/NNARparameters",ImprovementThreshold=-0.1)
+        out1,out2,hash=netwrapper(fix(X_train),fix(fix(y_train)),fix(X_test),structure,autoregress=True,epochs=1000,learning_rate=0.1,dynamic_learning=False,verbose=True,early_modelling=False,location="C:/477/Team Project/bixidata/NNoutput/NNARparameters",ImprovementThreshold=0.1)
+        if out1=='Nothing':
+            continue
         out=np.append(out1,out2)
         #print(out.shape)
         df['Prediction']=np.reshape(out,out.shape[0])
         df=Decoder(df,DecodeTable,'Count of Trips',False)
-        df['APE']=abs(df['Count of Trips']-df['Prediction'])/df['Count of Trips']
-        df['Prediction'].replace([np.inf, -np.inf],np.nan, inplace=True)
-        mape=round(np.nanmean(df['APE'].tail(5160))*100)
-        print(mape)
+        
+        try:
+            df['SE']=(df['Count of Trips']-df['Prediction'])**2
+            df['APE']=abs(df['Count of Trips']-df['Prediction'])/df['Count of Trips']
+            mape=round(np.nanmean(df['APE'].tail(5160))*100)
+            mse=round(np.nanmean(df['SE'].tail(5160))*100)
+        except Exception:
+            mape=420
+            mse=420
+        
+        print(mape,mse)
         if mape<recordmape:
             recordmape=mape
             df.to_csv('C:\\477\\Team Project\\bixidata\\NNoutput\\NNAROutput_'+namecomp+'_'+hash+'_'+str(mape)+'.csv')
